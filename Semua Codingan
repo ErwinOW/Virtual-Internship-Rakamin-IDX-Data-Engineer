@@ -1,0 +1,76 @@
+-- Membuat database DWH
+CREATE DATABASE DWH;
+GO
+
+-- Menggunakan database DWH
+USE DWH;
+GO
+
+-- Tabel DimAccount
+CREATE TABLE DimAccount (
+    AccountKey INT IDENTITY(1,1) PRIMARY KEY,
+    AccountNumber VARCHAR(50) NOT NULL,
+    AccountType VARCHAR(50),
+    CustomerID INT -- bisa di-link ke DimCustomer
+);
+
+-- Tabel DimCustomer
+CREATE TABLE DimCustomer (
+    CustomerKey INT IDENTITY(1,1) PRIMARY KEY,
+    CustomerName VARCHAR(100) NOT NULL,
+    CustomerEmail VARCHAR(100)
+);
+
+-- Tabel DimBranch
+CREATE TABLE DimBranch (
+    BranchKey INT IDENTITY(1,1) PRIMARY KEY,
+    BranchName VARCHAR(100) NOT NULL,
+    BranchLocation VARCHAR(100)
+);
+
+-- Tabel FactTransaction
+CREATE TABLE FactTransaction (
+    TransactionKey INT IDENTITY(1,1) PRIMARY KEY,
+    TransactionDate DATE NOT NULL,
+    AccountKey INT NULL,
+    BranchKey INT NULL,
+    Amount DECIMAL(18,2),
+    TransactionType VARCHAR(50),
+    CONSTRAINT fk_fact_account FOREIGN KEY (AccountKey) REFERENCES DimAccount(AccountKey),
+    CONSTRAINT fk_fact_branch FOREIGN KEY (BranchKey) REFERENCES DimBranch(BranchKey)
+);
+
+
+-- Stored Procedure 1: Total Transactions Per Day
+CREATE OR ALTER PROCEDURE sp_TotalTransactionsPerDay
+AS
+BEGIN
+    SELECT 
+        TransactionDate,
+        COUNT(*) AS TotalTransactions,
+        SUM(Amount) AS TotalAmount
+    FROM FactTransaction
+    GROUP BY TransactionDate
+    ORDER BY TransactionDate;
+END;
+GO
+
+-- Stored Procedure 2: Customer Balance Report
+CREATE OR ALTER PROCEDURE sp_CustomerBalanceReport
+AS
+BEGIN
+    SELECT 
+        c.CustomerKey,
+        c.CustomerName,
+        a.AccountNumber,
+        a.AccountType,
+        t.TransactionDate,
+        t.Amount,
+        t.TransactionType
+    FROM FactTransaction t
+    LEFT JOIN DimAccount a ON t.AccountKey = a.AccountKey
+    LEFT JOIN DimCustomer c ON a.CustomerID = c.CustomerKey
+    ORDER BY c.CustomerName, t.TransactionDate;
+END;
+GO
+
